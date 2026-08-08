@@ -745,6 +745,20 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                 help="Address and ports of the external engines.",
             )
             parser.add_argument(
+                "--update-weight-backend",
+                choices=["native", "modelexpress"],
+                default="native",
+                help="Select the native updater or the ModelExpress V0 lifecycle.",
+            )
+            parser.add_argument("--modelexpress-model-id", type=str, default=None)
+            parser.add_argument("--modelexpress-catalog-endpoint", type=str, default=None)
+            parser.add_argument("--modelexpress-s3-endpoint", type=str, default=None)
+            parser.add_argument("--modelexpress-s3-bucket", type=str, default=None)
+            parser.add_argument("--modelexpress-s3-prefix", type=str, default="")
+            parser.add_argument("--modelexpress-preparation-cache-dir", type=str, default=None)
+            parser.add_argument("--modelexpress-initial-version", type=str, default="0")
+            parser.add_argument("--modelexpress-ready-timeout-seconds", type=float, default=600.0)
+            parser.add_argument(
                 "--update-weight-transfer-mode",
                 choices=["broadcast", "p2p", "disk-delta"],
                 default="broadcast",
@@ -2859,6 +2873,24 @@ def miles_validate_args(args):
         and not args.ci_disable_weight_update_checker
     ):
         args.check_weight_update_equal = True
+
+    if args.update_weight_backend == "modelexpress":
+        required = {
+            "--modelexpress-model-id": args.modelexpress_model_id,
+            "--modelexpress-catalog-endpoint": args.modelexpress_catalog_endpoint,
+            "--modelexpress-s3-bucket": args.modelexpress_s3_bucket,
+            "--modelexpress-preparation-cache-dir": args.modelexpress_preparation_cache_dir,
+        }
+        missing = [name for name, value in required.items() if not value]
+        assert not missing, "ModelExpress V0 requires " + ", ".join(missing)
+        assert args.lora_rank <= 0, "ModelExpress V0 does not support LoRA weight updates."
+        assert not args.rollout_external, "ModelExpress V0 does not support external rollout engines."
+        assert args.modelexpress_initial_version == "0", (
+            "ModelExpress V0 requires --modelexpress-initial-version=0."
+        )
+        assert args.modelexpress_ready_timeout_seconds > 0
+        assert not args.update_weight_disk_dir
+        assert not args.custom_update_weight_post_write_path
 
     # always true on offload for colocate at the moment.
     if args.update_weight_transfer_mode == "p2p":
