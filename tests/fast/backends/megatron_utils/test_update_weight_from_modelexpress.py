@@ -63,7 +63,7 @@ class FakePublisher:
 
 
 class FakeEngine:
-    def __init__(self, events, *, install_success=True):
+    def __init__(self, events, install_success=True):
         self.version = "0"
         self.digest = "sha256:launch"
         self.install_success = install_success

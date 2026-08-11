@@ -19,7 +19,7 @@ class ModelExpressUpdateError(RuntimeError):
     pass
 
 
-def _require_success(result: Mapping[str, Any], *, operation: str, target_version: str) -> None:
+def _require_success(result: Mapping[str, Any], operation: str, target_version: str) -> None:
     if result.get("success") is not True:
         raise ModelExpressUpdateError(
             f"ModelExpress {operation} failed for {target_version}: {result.get('detail', '')}"
@@ -46,7 +46,6 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
         args: Namespace,
         model: Sequence[torch.nn.Module],
         weights_getter: Callable[[], Mapping[str, torch.Tensor]],
-        *,
         model_name: str,
         quantization_config: dict[str, int | str | list[str]] | None,
         is_lora: bool = False,
@@ -54,7 +53,7 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
     ) -> None:
         del weights_getter
         if is_lora:
-            raise ValueError("ModelExpress V0 does not support LoRA weight updates")
+            raise ValueError("ModelExpress does not support LoRA weight updates")
         self.args = args
         self.model = model
         self.model_name = model_name

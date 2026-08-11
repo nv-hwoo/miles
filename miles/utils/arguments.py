@@ -748,7 +748,7 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                 "--update-weight-backend",
                 choices=["native", "modelexpress"],
                 default="native",
-                help="Select the native updater or the ModelExpress V0 lifecycle.",
+                help="Select the native updater or the ModelExpress lifecycle.",
             )
             parser.add_argument("--modelexpress-model-id", type=str, default=None)
             parser.add_argument("--modelexpress-catalog-endpoint", type=str, default=None)
@@ -2882,12 +2882,10 @@ def miles_validate_args(args):
             "--modelexpress-preparation-cache-dir": args.modelexpress_preparation_cache_dir,
         }
         missing = [name for name, value in required.items() if not value]
-        assert not missing, "ModelExpress V0 requires " + ", ".join(missing)
-        assert args.lora_rank <= 0, "ModelExpress V0 does not support LoRA weight updates."
-        assert not args.rollout_external, "ModelExpress V0 does not support external rollout engines."
-        assert args.modelexpress_initial_version == "0", (
-            "ModelExpress V0 requires --modelexpress-initial-version=0."
-        )
+        assert not missing, "ModelExpress requires " + ", ".join(missing)
+        assert args.lora_rank <= 0, "ModelExpress does not support LoRA weight updates."
+        assert not args.rollout_external, "ModelExpress does not support external rollout engines."
+        assert args.modelexpress_initial_version == "0", "ModelExpress requires --modelexpress-initial-version=0."
         assert args.modelexpress_ready_timeout_seconds > 0
         assert not args.update_weight_disk_dir
         assert not args.custom_update_weight_post_write_path
