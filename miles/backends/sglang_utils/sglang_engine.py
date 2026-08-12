@@ -746,14 +746,15 @@ def _compute_server_args(
         "enable_metrics": True,
     }
 
-    if getattr(args, "update_weight_backend", "native") == "modelexpress":
+    if args.update_weight_transfer_mode == "modelexpress":
+        config = args.modelexpress_config
         kwargs.update(
-            modelexpress_model_id=args.modelexpress_model_id,
-            modelexpress_catalog_endpoint=args.modelexpress_catalog_endpoint,
-            modelexpress_delta_s3_endpoint=args.modelexpress_s3_endpoint,
-            modelexpress_initial_version=args.modelexpress_initial_version,
-            modelexpress_ready_timeout_seconds=args.modelexpress_ready_timeout_seconds,
-            modelexpress_preparation_cache_dir=args.modelexpress_preparation_cache_dir,
+            modelexpress_model_id=config["model_id"],
+            modelexpress_catalog_endpoint=config["catalog_endpoint"],
+            modelexpress_delta_s3_endpoint=config.get("s3_endpoint"),
+            modelexpress_initial_version=str(config.get("initial_version", "0")),
+            modelexpress_ready_timeout_seconds=float(config.get("ready_timeout_seconds", 600.0)),
+            modelexpress_preparation_cache_dir=config["preparation_cache_dir"],
         )
 
     if sglang_overrides:

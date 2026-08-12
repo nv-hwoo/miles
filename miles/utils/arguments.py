@@ -745,29 +745,22 @@ def get_miles_extra_args_provider(add_custom_arguments=None):
                 help="Address and ports of the external engines.",
             )
             parser.add_argument(
-                "--update-weight-backend",
-                choices=["native", "modelexpress"],
-                default="native",
-                help="Select the native updater or the ModelExpress lifecycle.",
-            )
-            parser.add_argument("--modelexpress-model-id", type=str, default=None)
-            parser.add_argument("--modelexpress-catalog-endpoint", type=str, default=None)
-            parser.add_argument("--modelexpress-s3-endpoint", type=str, default=None)
-            parser.add_argument("--modelexpress-s3-bucket", type=str, default=None)
-            parser.add_argument("--modelexpress-s3-prefix", type=str, default="")
-            parser.add_argument("--modelexpress-preparation-cache-dir", type=str, default=None)
-            parser.add_argument("--modelexpress-initial-version", type=str, default="0")
-            parser.add_argument("--modelexpress-ready-timeout-seconds", type=float, default=600.0)
-            parser.add_argument(
                 "--update-weight-transfer-mode",
-                choices=["broadcast", "p2p", "disk-delta"],
+                choices=["broadcast", "p2p", "disk-delta", "modelexpress"],
                 default="broadcast",
                 help=(
                     "The method to transfer weights to remote rollout engines during update weight. "
-                    "'disk-delta' diffs each sync against a CPU snapshot of the previous one and publishes "
-                    "only the changed bytes to --update-weight-disk-dir; each engine's /pull_weights applies "
-                    "them into a host-local checkpoint that the engine reloads from."
+                    "'modelexpress' uses the ModelExpress revision lifecycle configured by "
+                    "--modelexpress-config. 'disk-delta' diffs each sync against a CPU snapshot of the "
+                    "previous one and publishes only the changed bytes to --update-weight-disk-dir; each "
+                    "engine's /pull_weights applies them into a host-local checkpoint that the engine reloads from."
                 ),
+            )
+            parser.add_argument(
+                "--modelexpress-config",
+                type=json.loads,
+                default={},
+                help="ModelExpress configuration as a JSON object.",
             )
             parser.add_argument(
                 "--update-weight-disk-dir",
@@ -2874,21 +2867,27 @@ def miles_validate_args(args):
     ):
         args.check_weight_update_equal = True
 
-    if args.update_weight_backend == "modelexpress":
+    if args.update_weight_transfer_mode == "modelexpress":
+        config = args.modelexpress_config
+        assert isinstance(config, dict), "--modelexpress-config must be a JSON object"
         required = {
-            "--modelexpress-model-id": args.modelexpress_model_id,
-            "--modelexpress-catalog-endpoint": args.modelexpress_catalog_endpoint,
-            "--modelexpress-s3-bucket": args.modelexpress_s3_bucket,
-            "--modelexpress-preparation-cache-dir": args.modelexpress_preparation_cache_dir,
+            "model_id": config.get("model_id"),
+            "catalog_endpoint": config.get("catalog_endpoint"),
+            "s3_bucket": config.get("s3_bucket"),
+            "preparation_cache_dir": config.get("preparation_cache_dir"),
         }
         missing = [name for name, value in required.items() if not value]
-        assert not missing, "ModelExpress requires " + ", ".join(missing)
+        assert not missing, "--modelexpress-config requires " + ", ".join(missing)
         assert args.lora_rank <= 0, "ModelExpress does not support LoRA weight updates."
         assert not args.rollout_external, "ModelExpress does not support external rollout engines."
-        assert args.modelexpress_initial_version == "0", "ModelExpress requires --modelexpress-initial-version=0."
-        assert args.modelexpress_ready_timeout_seconds > 0
+        assert str(config.get("initial_version", "0")) == "0", "ModelExpress requires initial_version=0."
+        assert float(config.get("ready_timeout_seconds", 600.0)) > 0
         assert not args.update_weight_disk_dir
         assert not args.custom_update_weight_post_write_path
+    else:
+        assert (
+            not args.modelexpress_config
+        ), "--modelexpress-config requires --update-weight-transfer-mode=modelexpress"
 
     # always true on offload for colocate at the moment.
     if args.update_weight_transfer_mode == "p2p":

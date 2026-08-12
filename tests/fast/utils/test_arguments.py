@@ -152,6 +152,100 @@ def test_recompute_logprobs_via_prefill_flag_is_parsed():
     assert args.recompute_logprobs_via_prefill is True
 
 
+def test_modelexpress_uses_transfer_mode_and_one_json_config():
+    parser = argparse.ArgumentParser()
+    get_miles_extra_args_provider()(parser)
+
+    args = parser.parse_args(
+        [
+            "--update-weight-transfer-mode",
+            "modelexpress",
+            "--modelexpress-config",
+            '{"model_id":"policy","future_option":{"enabled":true}}',
+        ]
+        + REQUIRED_ARGS
+    )
+
+    assert args.update_weight_transfer_mode == "modelexpress"
+    assert args.modelexpress_config == {
+        "model_id": "policy",
+        "future_option": {"enabled": True},
+    }
+    assert not hasattr(args, "update_weight_backend")
+    assert not hasattr(args, "modelexpress_model_id")
+
+
+def test_modelexpress_config_rejects_non_object_json():
+    parser = argparse.ArgumentParser()
+    get_miles_extra_args_provider()(parser)
+    args = parser.parse_args(
+        [
+            "--update-weight-transfer-mode",
+            "modelexpress",
+            "--modelexpress-config",
+            '["not", "an", "object"]',
+            "--num-rollout",
+            "1",
+        ]
+        + REQUIRED_ARGS
+    )
+
+    with pytest.raises(AssertionError, match="--modelexpress-config must be a JSON object"):
+        miles_validate_args(args)
+
+
+def test_replaced_modelexpress_flags_are_rejected():
+    parser = argparse.ArgumentParser()
+    get_miles_extra_args_provider()(parser)
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--update-weight-backend", "modelexpress"] + REQUIRED_ARGS)
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--modelexpress-model-id", "policy"] + REQUIRED_ARGS)
+
+
+def test_modelexpress_validation_requires_config_keys():
+    parser = argparse.ArgumentParser()
+    get_miles_extra_args_provider()(parser)
+    args = parser.parse_args(
+        [
+            "--update-weight-transfer-mode",
+            "modelexpress",
+            "--modelexpress-config",
+            '{"model_id":"policy"}',
+            "--num-rollout",
+            "1",
+        ]
+        + REQUIRED_ARGS
+    )
+
+    with pytest.raises(
+        AssertionError,
+        match="--modelexpress-config requires catalog_endpoint, s3_bucket, preparation_cache_dir",
+    ):
+        miles_validate_args(args)
+
+
+def test_modelexpress_config_requires_modelexpress_transfer_mode():
+    parser = argparse.ArgumentParser()
+    get_miles_extra_args_provider()(parser)
+    args = parser.parse_args(
+        [
+            "--modelexpress-config",
+            '{"future_option":true}',
+            "--num-rollout",
+            "1",
+        ]
+        + REQUIRED_ARGS
+    )
+
+    with pytest.raises(
+        AssertionError,
+        match="--modelexpress-config requires --update-weight-transfer-mode=modelexpress",
+    ):
+        miles_validate_args(args)
+
+
 def test_sglang_parallel_sizes_keep_server_args_destinations():
     parser = add_sglang_arguments(argparse.ArgumentParser())
     args = parser.parse_args(

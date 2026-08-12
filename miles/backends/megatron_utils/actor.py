@@ -231,7 +231,7 @@ class MegatronTrainRayActor(TrainRayActor):
         if self.args.vocab_size is None:
             self.args.vocab_size = self.tokenizer.vocab_size
 
-        if getattr(args, "update_weight_backend", "native") == "modelexpress":
+        if self.args.update_weight_transfer_mode == "modelexpress":
             from .update_weight.update_weight_from_modelexpress import UpdateWeightFromModelExpress
 
             update_weight_cls = UpdateWeightFromModelExpress

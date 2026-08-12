@@ -58,7 +58,8 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
         self.model = model
         self.model_name = model_name
         self.quantization_config = quantization_config
-        self.weight_version = int(args.modelexpress_initial_version)
+        self._config = dict(args.modelexpress_config)
+        self.weight_version = int(self._config.get("initial_version", "0"))
         self.rollout_engines: Sequence[ActorHandle] | None = None
         self._connection_stale = False
         self._baseline_captured = False
@@ -81,12 +82,12 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
             )
             publisher.initialize(
                 PublisherConfig(
-                    model_id=args.modelexpress_model_id,
-                    catalog_endpoint=args.modelexpress_catalog_endpoint,
+                    model_id=self._config["model_id"],
+                    catalog_endpoint=self._config["catalog_endpoint"],
                     s3=S3Config(
-                        bucket=args.modelexpress_s3_bucket,
-                        prefix=args.modelexpress_s3_prefix,
-                        endpoint_url=args.modelexpress_s3_endpoint,
+                        bucket=self._config["s3_bucket"],
+                        prefix=self._config.get("s3_prefix", ""),
+                        endpoint_url=self._config.get("s3_endpoint"),
                     ),
                 )
             )
@@ -126,7 +127,7 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
                     raise ModelExpressUpdateError("rollout launch cohort does not match revision 0")
             if len(statuses) != len(self.rollout_engines):
                 raise ModelExpressUpdateError("rollout launch cohort is incomplete")
-            self._catalog.commit_revision(self.args.modelexpress_model_id, str(self.weight_version))
+            self._catalog.commit_revision(self._config["model_id"], str(self.weight_version))
         self._publisher.wait_for_commit(str(self.weight_version))
 
     def pop_metrics(self) -> dict[str, float]:
@@ -192,6 +193,6 @@ class UpdateWeightFromModelExpress(UpdateWeightFromDiskDelta):
                 or status.get("state") != "VERIFIED"
             ):
                 raise ModelExpressUpdateError("receiver status is not VERIFIED")
-        self._catalog.commit_revision(self.args.modelexpress_model_id, target_version)
+        self._catalog.commit_revision(self._config["model_id"], target_version)
         ray.get([engine.continue_generation.remote() for engine in engines])
         return _receiver_metrics([*prepared, *installed])

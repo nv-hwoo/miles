@@ -40,14 +40,17 @@ def test_modelexpress_private_startup_config_reaches_sglang(monkeypatch):
         debug_rollout_only=False,
         fp16=False,
         hf_checkpoint="/models/model",
-        modelexpress_catalog_endpoint="dns:///catalog:50051",
-        modelexpress_initial_version="0",
-        modelexpress_model_id="policy",
-        modelexpress_preparation_cache_dir="/models/mx-cache",
-        modelexpress_ready_timeout_seconds=321.0,
-        modelexpress_s3_bucket="weights",
-        modelexpress_s3_endpoint=None,
-        modelexpress_s3_prefix="run/policy",
+        modelexpress_config={
+            "catalog_endpoint": "dns:///catalog:50051",
+            "initial_version": "0",
+            "model_id": "policy",
+            "preparation_cache_dir": "/models/mx-cache",
+            "ready_timeout_seconds": 321.0,
+            "s3_bucket": "weights",
+            "s3_endpoint": None,
+            "s3_prefix": "run/policy",
+            "future_option": {"enabled": True},
+        },
         num_gpus_per_node=8,
         offload_rollout=False,
         rollout_num_gpus_per_engine=1,
@@ -55,7 +58,7 @@ def test_modelexpress_private_startup_config_reaches_sglang(monkeypatch):
         sglang_dp_size=1,
         sglang_ep_size=1,
         sglang_pp_size=1,
-        update_weight_backend="modelexpress",
+        update_weight_transfer_mode="modelexpress",
         use_rollout_indexer_replay=False,
         use_rollout_routing_replay=False,
     )
@@ -79,6 +82,7 @@ def test_modelexpress_private_startup_config_reaches_sglang(monkeypatch):
     assert server_args["modelexpress_initial_version"] == "0"
     assert server_args["modelexpress_ready_timeout_seconds"] == 321.0
     assert server_args["modelexpress_preparation_cache_dir"] == "/models/mx-cache"
+    assert "future_option" not in server_args
 
 
 def test_flush_cache_sleeps_between_pending_request_retries(monkeypatch):

@@ -118,8 +118,10 @@ class FakeEngine:
 def args():
     return Namespace(
         hf_checkpoint="/models/model",
-        modelexpress_initial_version="0",
-        modelexpress_model_id="policy",
+        modelexpress_config={
+            "initial_version": "0",
+            "model_id": "policy",
+        },
         pause_generation_mode="retract",
     )
 
